@@ -1,0 +1,146 @@
+; Auxiliary procedure to test the A* algorithm between two random nodes of the network
+to run-a-star [x-start y-start x-end y-end]
+  ;;print "running a*"
+  ask networkpoints [set color blue set size .5]
+  ;;print word "networkpoints" count networkpoints
+  ask links with [color = yellow][set color grey set thickness 0]
+  let start one-of networkpoints with [xcor = x-start and ycor = y-start]
+  ask start [set color green set size 1]
+  let goal one-of networkpoints with [xcor = x-end and  ycor = y-end]
+  set debug-counter debug-counter + 1
+  ;;print word "run A*" debug-counter
+  ;;print goal
+  ;print x-start
+  ;print y-start
+  ;print x-end
+  ;print y-end
+  ;print xcor
+  ;print ycor
+  if goal != nobody [
+    ask goal [set color green set size 1]
+  ; We compute the path with A*
+  ;;print "Start search"
+  ;;print date-and-time
+  let path (A* start goal)
+ ;; print "End search"
+  ;;print date-and-time
+  ; if any, we highlight it
+  if path != false
+  [
+    highlight-path path
+    let tube-path []
+    foreach path [ x -> set tube-path lput x tube-path]
+    ;; hatch tube to make it visible
+    hatch-tubes 1
+    [
+      setxy x-start y-start
+      set path-list tube-path
+      set color yellow
+      set size 2      
+      set pen-size 8
+      pen-down
+    ]
+  ]  
+  ]
+end
+
+; Searcher report to compute the heuristic for this searcher: in this case, one good option
+; is the euclidean distance from the location of the node and the goal we want to reach
+to-report heuristic [#Goal]
+  report [distance [localization] of myself] of #Goal
+end
+
+; The A* Algorithm es very similar to the previous one (patches). It is supposed that the
+; network is accesible by the algorithm, so we don't need to pass it as input. Therefore,
+; it will receive only the initial and final nodes.
+to-report A* [#Start #Goal]
+  ; Create a searcher for the Start node
+  ask #Start
+  [
+    hatch-searchers 1
+    [
+      set shape "circle"
+      set color red
+      set localization myself
+      set memory (list localization) ; the partial path will have only this node at the beginning
+      set cost 0
+      set total-expected-cost cost + heuristic #Goal ; Compute the expected cost
+      set active? true ; It is active, because we didn't calculate its neighbors yet
+    ]
+  ]
+  ; The main loop will run while the Goal has not been reached and we have active searchers to
+  ; inspect. Tha means that a path connecting start and goal is still possible
+  while [not any? searchers with [localization = #Goal] and any? searchers with [active?]]
+  [
+    ; From the active searchers we take one of the minimal expected cost to the goal
+    ask min-one-of (searchers with [active?]) [total-expected-cost]
+    [
+      ; We will explore its neighbors, so we deactivated it
+      set active? false
+      ; Store this searcher and its localization in temporal variables to facilitate their use
+      let this-searcher self
+      let Lorig localization
+      ; For every neighbor node of this location
+      ask ([link-neighbors] of Lorig)
+      [
+        ; Take the link that connect it to the Location of the searcher
+        let connection link-with Lorig
+        ; The cost to reach the neighbor in this path is the previous cost plus the lenght of the link
+        let c ([cost] of this-searcher) + [link-length] of connection
+        ; Maybe in this node there are other searchers (comming from other nodes).
+        ; If this new path is better than the other, then we put a new searcher and remove the old ones
+        if not any? searchers-in-loc with [cost < c]
+        [
+          hatch-searchers 1
+          [
+            set shape "circle"
+            set color red
+            set localization myself ; the location of the new searcher is this neighbor node
+            set memory lput localization ([memory] of this-searcher) ; the path is built from the
+                                                                     ; original searcher
+            set cost c   ; real cost to reach this node
+            set total-expected-cost cost + heuristic #Goal ; expected cost to reach the goal with this path
+            set active? true  ; it is active to be explored
+            ask other searchers-in-loc [die] ; Remove other seacrhers in this node
+          ]
+        ]
+      ]
+    ]
+  ]
+  ; When the loop has finished, we have two options: no path, or a searcher has reached the goal
+  ; By default the return will be false (no path)
+  let res false
+  ; But if it is the second option
+  if any? searchers with [localization = #Goal]
+  [
+    ; we will return the path located in the memory of the searcher that reached the goal
+    let lucky-searcher one-of searchers with [localization = #Goal]
+    set res [memory] of lucky-searcher
+  ]
+  ; Remove the searchers
+  ask searchers [die]
+  ; and report the result
+  report res
+end
+
+; Auxiliary procedure the highlight the path when it is found. It makes use of reduce procedure with
+; highlight report
+to highlight-path [path]
+  let reduced reduce highlight path
+end
+
+; Auxiliaty report to highlight the path with a reduce method. It recieives two nodes, as a secondary
+; effect it will highlight the link between them, and will return the second node.
+to-report highlight [x y]
+  ask x
+  [
+    ask link-with y [set color orange set thickness .4]
+  ]
+  report y
+end
+
+; Auxiliary nodes report to return the searchers located in it (it is like a version of turtles-here,
+; but fot he network)
+to-report searchers-in-loc
+  report searchers with [[xcor] of localization = [xcor] of myself and [ycor] of localization = [ycor] of myself]
+end

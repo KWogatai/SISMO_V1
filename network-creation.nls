@@ -1,0 +1,202 @@
+to create-pseudopodia-network [breeds]
+  ;;print "creating pseudopod network"
+  ;; extract the pseudopodia breed from the agentset to access the list of pseudopodias
+  let pseudos [pseudopodia] of breeds
+  ;; iterate through all pseudopodias to check if they have an intersection
+  let coordinates-list [path-list] of item 0 pseudos
+  if length coordinates-list = 0
+  [
+    ;; in case there is only one pseudopodium
+    set coordinates-list lput item 0 coordinates-list coordinates-list
+  ]
+  let i 0
+  ;;print length coordinates-list - 1
+  while [ i < length coordinates-list ]
+  [    
+   ;;print word "pseudo coord" i
+    ;; get current coordinates from all coordinates
+    let coordinates item i coordinates-list
+    ;;print word "coordinates-list i" coordinates-list
+    let j length coordinates - 1
+    ;;print word "coordinates-list j" coordinates-list
+    ;; we itarte backwards, to insert the intersection on the right place, otherwise it would mess up the order of the sequence
+    while [ j > 0]
+    [
+      if item 2 item (j - 1) coordinates != 1 and item 2 item (j) coordinates != 1
+      [
+        let x-1 item 0 item (j - 1) coordinates
+        let x-2 item 0 item (j) coordinates
+        let y-1 item 1 item (j - 1) coordinates
+        let y-2 item 1 item (j) coordinates
+        ;; Compare current pseudopodia with itself (to also calculate the interfaces of itself) and compare current with other pseudopodias.
+        ;; One doesn't need to compare pseudopodia one with pseudopodia two and than again pseudopodia two with pseudopodia one.
+        ;; Therefore iterate only for example pseudopodia two with three, four five and so on
+        let k i       
+        while [ k < length coordinates-list ]
+        [
+          ;; get coordinates to compare from the list of all coordinates
+          let coordinates-to-compare item k coordinates-list
+          let l length coordinates-to-compare - 1
+          while [ l > 0]
+          [
+            ;; if the coordinates are a copy of a parent skip the comparison    
+            if item 2 item (l - 1) coordinates-to-compare != 1  and item 2 item (l - 0) coordinates-to-compare != 1
+            [
+              ;; Defining the comparison coordinates
+              let x-1-compare item 0 item (l - 1) coordinates-to-compare
+              let x-2-compare item 0 item (l) coordinates-to-compare 
+              let y-1-compare item 1 item (l - 1) coordinates-to-compare
+              let y-2-compare item 1 item (l) coordinates-to-compare
+              ;; If the intersection points are already connected, do not perform an intersection calculation.
+              if (x-1 != x-1-compare) and (y-1 != y-2-compare) and (x-2 != x-2-compare) and (y-2 != y-2-compare) and (y-2 != y-1-compare) and (x-2 != x-1-compare)
+              [
+                ;; calculate intersection points
+                let intersection-coordinate-result intersection-point x-1 x-2 x-1-compare x-2-compare y-1 y-2 y-1-compare y-2-compare
+                ifelse (intersection-coordinate-result != []) and (intersection-coordinate-result != (list 0 0 1)) and (not empty? intersection-coordinate-result)
+                [
+                  ;; if show-intersection-points is set, than mark the intersection points with an X
+                  if show-intersection-points
+                    [
+                      hatch 1
+                      [
+                        set shape "x"
+                        set color red
+                        set size 1
+                        set xcor item 0 intersection-coordinate-result
+                        set ycor item 1 intersection-coordinate-result
+                      ]
+                  ]        
+                  ;; The intersection point is set at the correct position in the coordinates list and the network around the intersection point is built.
+                  ;; The network points are created only if there doesn't exist a network point on this coordinate.                  
+                  set coordinates insert-item (j) coordinates intersection-coordinate-result
+                  set coordinates-to-compare insert-item (l) coordinates-to-compare intersection-coordinate-result
+                  ;; check if there are existing network points, if not create some and link them, if they exist create the missing one and connect them
+                  let first-point one-of networkpoints with [xcor = x-1 and ycor = y-1]
+                  let intersec-point one-of networkpoints with [xcor = item 0 intersection-coordinate-result and ycor = item 1 intersection-coordinate-result]
+                  if(first-point = nobody)
+                  [
+                    hatch-networkpoints 1
+                    [
+                      setxy x-1 y-1
+                      set hidden? not show-network
+                      set shape "circle"
+                      set size .5
+                      set color blue
+                      set label ""
+                      set first-point self
+                    ]
+                  ]
+                  if(intersec-point = nobody)
+                  [
+                    hatch-networkpoints 1
+                    [
+                      setxy item 0 intersection-coordinate-result item 1 intersection-coordinate-result
+                      set hidden? not show-network
+                      set shape "circle"
+                      set size .5
+                      set color blue
+                      set label ""
+                      set intersec-point self
+                    ]
+                  ] 
+                  ask first-point [create-link-with intersec-point]                  
+                  
+                  let second-point one-of networkpoints with [xcor = x-2 and ycor = y-2]
+                  if(second-point = nobody)
+                  [
+                    hatch-networkpoints 1
+                    [
+                      setxy x-2 y-2
+                      set hidden? not show-network
+                      set shape "circle"
+                      set size .5
+                      set color blue
+                      set label ""
+                      set second-point self
+                    ]
+                  ]                  
+                  ask intersec-point [create-link-with second-point]
+                  
+                  let first-compare-point one-of networkpoints with [xcor = x-1-compare and ycor = y-1-compare]
+                  if(first-compare-point = nobody)
+                  [
+                    hatch-networkpoints 1
+                    [
+                      setxy x-1-compare y-1-compare
+                      set hidden? not show-network
+                      set shape "circle"
+                      set size .5
+                      set color blue
+                      set label ""
+                      set first-compare-point self
+                    ]
+                  ]
+                  ask first-compare-point [create-link-with intersec-point]
+                  
+                  let second-compare-point one-of networkpoints with [xcor = x-2-compare and ycor = y-2-compare]
+                  if(second-compare-point = nobody)
+                  [
+                    hatch-networkpoints 1
+                    [
+                      setxy x-2-compare y-2-compare
+                      set hidden? not show-network
+                      set shape "circle"
+                      set size .5
+                      set color blue
+                      set label ""
+                      set second-compare-point self
+                    ]
+                  ]
+                  ask intersec-point [create-link-with second-compare-point]                  
+                ]
+                [
+                  ;; if there are no intersection points just build the network without them for the provided coordinates
+                  build-network x-1 y-1 x-2 y-2
+                ]
+                ;; Links are created between the network points and these are then colored yellow to match the rest of the simulation.
+                ask links [set color orange]              
+              ]              
+            ]
+            set l l - 1
+          ]
+          set k k + 1
+        ]
+      ]
+      set j j - 1
+    ]
+    set i i + 1
+  ]
+end
+
+to build-network [x-1 y-1 x-2 y-2]
+  ;; check if there are existing network points, if not create some and link them, if they exist create the missing one and connect them
+  let first-point one-of networkpoints with [xcor = x-1 and ycor = y-1]
+  let second-point one-of networkpoints with [xcor = x-2 and ycor = y-2]
+  if(first-point = nobody)
+  [
+    hatch-networkpoints 1
+    [
+      setxy x-1 y-1
+      set hidden? not show-network
+      set shape "circle"
+      set size .5
+      set color blue
+      set label ""
+      set first-point self
+    ]
+  ]
+  if(second-point = nobody)
+  [
+    hatch-networkpoints 1
+    [
+      setxy x-2 y-2
+      set hidden? not show-network
+      set shape "circle"
+      set size .5
+      set color blue
+      set label ""
+      set second-point self
+    ]
+  ]
+  ask first-point [create-link-with second-point]
+end

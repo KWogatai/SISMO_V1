@@ -1,0 +1,30 @@
+;; calculation of the intersection points (line-line intersection)
+to-report intersection-point [x1 x2 x3 x4 y1 y2 y3 y4]
+  let point []
+  let t-numerator (x1 - x3) * (y3 - y4) - (y1 - y3) * ( x3 - x4)
+  let t-denominator (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+  let u-numerator (x1 - x3) * (y1 - y2) - (y1 - y3) * ( x1 - x2)
+  let u-denominator (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+  if (t-denominator = 0) or (u-denominator = 0) [
+    report point
+  ]
+  let t t-numerator / t-denominator
+  let u u-numerator / u-denominator
+  ;; there is an intersection if 0.0 <= t <= 1.0 and if 0.0 <= u <= 1.0
+  if (t >= 0) and (t <= 1) and (u >= 0) and (u <= 1)
+  [
+    set point (list (x1 + t * (x2 - x1)) (y1 + t * (y2 - y1)) 0)
+  ]
+  report point
+end
+
+;; next two functions are for replacing the zeros in the coordinate list of a pseudopodium.
+to-report replace-zero [the-list]
+  if item 2 the-list = 0
+    [ report replace-item 2 the-list 1 ]
+  report the-list
+end
+
+to-report replace-zeros [lists]
+  report map [ i -> replace-zero i] lists
+end

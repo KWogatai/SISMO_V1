@@ -1,0 +1,62 @@
+;;;;;;;;;;;;;;;;;;;;;;
+;; Setup Procedures ;;
+;;;;;;;;;;;;;;;;;;;;;;
+
+;; create slime population
+to make-plasmodia [x-cor y-cor]
+  create-plasmodia 1
+  [
+    setxy x-cor y-cor
+    set size 3
+    set shape "cloud"
+    set color yellow
+  ]
+end
+
+;; create pseudopodia
+to make-pseudopodia [number x-cor y-cor]  
+  create-pseudopodia number
+  [
+    ;; for the pseudopias we need the same starting position as for the plasmodium. Because it spreads from the center    
+    setxy x-cor y-cor
+    set color orange
+    set shape "dot"
+    set path-list []
+    set path-list insert-item 0 path-list (list xcor ycor 0)
+    pen-down
+  ]
+end
+
+;; create food sources
+to make-foods [x-cor y-cor]
+  create-foods 1 [
+    set shape "circle 2"
+    set color orange
+    set size 1
+    setxy x-cor y-cor
+    set nutrient-value 10
+    set chemical-level 23
+    set intensity 50
+    set label-color red
+  ]
+end
+
+;; patch procedure
+to generate-field
+  set light-level 0
+  ;; every patch needs to check in with every light
+  ask foods
+    [ set-field myself ]
+  set pcolor scale-color orange (sqrt light-level) 0.1 ( sqrt ( 20 * max [intensity] of foods ) )
+end
+
+;; do the calculations for the light on one patch due to one light
+;; which is proportional to the distance from the light squared.
+to set-field [p]  ;; turtle procedure; input p is a patch
+  let rsquared (distance p) ^ 2
+  let amount chemical-level * scale-factor
+  ifelse rsquared = 0
+    [ set amount amount * 1000 ]
+    [ set amount amount / rsquared ]
+  ask p [ set light-level light-level + amount ]
+end
