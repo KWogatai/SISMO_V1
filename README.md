@@ -1,5 +1,5 @@
 # SISMO
-Slime Mold Simulation
+Slime Mold Simulation (adapted for Energy Networks)
 
 ## WHAT IS IT?
 
